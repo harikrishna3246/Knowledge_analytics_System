@@ -1,0 +1,157 @@
+.result-page {
+    padding: 60px 20px;
+    background: #fdfdfd;
+    min-height: 100vh;
+}
+
+.result-card {
+    max-width: 700px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    padding: 50px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+    text-align: center;
+}
+
+.trophy-section .trophy-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.trophy-icon.gold {
+    color: #f1c40f;
+}
+
+.trophy-icon.silver {
+    color: #bdc3c7;
+}
+
+.topic-name {
+    color: #888;
+    font-weight: 500;
+}
+
+.score-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    margin: 40px 0;
+    padding: 30px;
+    background: #fcfcfc;
+    border-radius: 15px;
+}
+
+.score-circle {
+    width: 120px;
+    height: 120px;
+    border: 8px solid var(--accent);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.score-circle .percent {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.score-circle .label {
+    font-size: 0.7rem;
+    color: #888;
+    text-transform: uppercase;
+}
+
+.score-details {
+    text-align: left;
+}
+
+.review-section {
+    text-align: left;
+    margin-top: 50px;
+}
+
+.review-item {
+    background: white;
+    border: 1px solid #f0f0f0;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.icon-correct {
+    color: #00b894;
+}
+
+.icon-wrong {
+    color: #d63031;
+}
+
+.icon-review {
+    color: #fdcb6e;
+}
+
+.ans-compare,
+.prob-review {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #eee;
+    font-size: 0.9rem;
+}
+
+.correct-ans {
+    color: #00b894;
+    font-weight: 600;
+}
+
+.your-ans {
+    margin-bottom: 5px;
+}
+
+.hint-box {
+    margin-top: 10px;
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+.result-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 40px;
+}
+
+.btn-retry,
+.btn-home {
+    padding: 12px 25px;
+    border-radius: 25px;
+    border: none;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: 0.2s;
+}
+
+.btn-retry {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-home {
+    background: #f0f0f0;
+    color: #555;
+}
