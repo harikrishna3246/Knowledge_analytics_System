@@ -1,22 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-page: #faf7f2;
-  /* Warm Cream background */
+  --bg-page: #faf9f6;
   --bg-card: #ffffff;
-  --primary: #d6b496;
-  /* Skin/Tan accent */
-  --primary-glow: rgba(214, 180, 150, 0.3);
-  --secondary: #7a6a61;
-  /* Coffee brown muted */
-  --accent: #3e332e;
-  /* Deep coffee text */
-  --text-main: #2c2420;
-  --text-muted: #7a6a61;
-  --glass: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(62, 51, 46, 0.08);
-  --glass-hover: rgba(255, 255, 255, 0.9);
-  --shadow-soft: 0 10px 30px rgba(62, 51, 46, 0.05);
+  --primary: #c29b7c;
+  /* Refined tan */
+  --primary-light: #e6d5c7;
+  --primary-glow: rgba(194, 155, 124, 0.2);
+  --secondary: #5d5048;
+  /* Sophisticated brown */
+  --accent: #2a2421;
+  /* Deepest brown */
+  --text-main: #1a1614;
+  --text-muted: #827167;
+  --glass: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(42, 36, 33, 0.06);
+  --shadow-premium: 0 20px 40px rgba(42, 36, 33, 0.04), 0 5px 15px rgba(42, 36, 33, 0.02);
+  --radius-xl: 32px;
+  --radius-lg: 20px;
+  --transition-smooth: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * {
@@ -138,11 +140,12 @@ body {
 }
 
 .hero-title {
-  font-size: 4.5rem;
-  line-height: 1.05;
+  font-size: 5rem;
+  line-height: 1.1;
   font-weight: 800;
   color: var(--accent);
   margin-bottom: 2rem;
+  letter-spacing: -0.03em;
 }
 
 .gradient-text {
@@ -204,13 +207,14 @@ body {
 
 /* Hero Visual */
 .visual-card {
-  background: #fff;
-  border-radius: 28px;
-  padding: 2.5rem;
-  box-shadow: 0 40px 80px rgba(62, 51, 46, 0.08);
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: 3rem;
+  box-shadow: var(--shadow-premium);
   border: 1px solid var(--glass-border);
-  animation: float 8s ease-in-out infinite;
-  width: 400px;
+  animation: float 6s ease-in-out infinite;
+  width: 440px;
+  backdrop-filter: blur(10px);
 }
 
 @keyframes float {
