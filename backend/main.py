@@ -20,6 +20,10 @@ from database import documents_collection, topics_collection
 from fastapi.responses import FileResponse
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib import colors
 import tempfile
 import os
 
@@ -96,41 +100,6 @@ async def upload_document(file: UploadFile = File(...), subject: str = Form(...)
         except Exception as e:
             content = f"[Content extraction failed: {str(e)}]"
             headings = []
-
-        # 4. VALIDATE SUBJECT VS DOCUMENT (AI-based consistency check)
-        validation_preview = content[:5000]
-        validation_prompt = f"""
-        Analyze the following text and determine if it belongs to the subject: '{subject}'.
-        
-        TEXT PREVIEW:
-        {validation_preview}
-        
-        Instruction:
-        - If the content is significantly related to '{subject}', return {{"match": true}}.
-        - If the content has NOTHING to do with '{subject}', return {{"match": false, "reason": "Short explanation why it doesn't match"}}.
-        
-        OUTPUT FORMAT (STRICT JSON ONLY):
-        {{"match": boolean, "reason": "string"}}
-        """
-        
-        try:
-            val_response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=[{"role": "user", "content": validation_prompt}],
-                response_format={"type": "json_object"}
-            )
-            val_result = json.loads(val_response.choices[0].message.content)
-            
-            if not val_result.get("match", False):
-                # Remove file if it doesn't match
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                return {
-                    "error": f"Invalid Document: The content does not match the subject '{subject}'. {val_result.get('reason', '')}",
-                    "status_code": 400
-                }
-        except Exception as e:
-            print(f"Validation Error: {e}")
 
         # Get file size
         file_size = os.path.getsize(file_path)
@@ -336,66 +305,94 @@ def download_topic_pdf(topic_name: str):
         return {"error": "Topic not found"}
 
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    c = canvas.Canvas(temp_file.name, pagesize=A4)
+    temp_file.close()
 
-    width, height = A4
-    y = height - 50
+    # Create document template with proper margins
+    doc = SimpleDocTemplate(
+        temp_file.name, 
+        pagesize=A4, 
+        rightMargin=50, 
+        leftMargin=50, 
+        topMargin=50, 
+        bottomMargin=50
+    )
+    styles = getSampleStyleSheet()
+    
+    # Custom Professional Styles
+    title_style = ParagraphStyle(
+        'TopicTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        spaceAfter=15,
+        textColor=colors.HexColor("#2c2420"),
+        alignment=TA_LEFT
+    )
+    
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.gray,
+        spaceAfter=15
+    )
+    
+    heading_style = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=20,
+        spaceAfter=10,
+        textColor=colors.HexColor("#d6b496"),
+        borderPadding=(0, 0, 2, 0)
+    )
+    
+    body_style = ParagraphStyle(
+        'BodyText',
+        parent=styles['Normal'],
+        fontSize=11,
+        leading=16,
+        spaceAfter=10,
+        alignment=TA_LEFT
+    )
 
-    # Topic Title (Bold)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(50, y, f"Academic Insight: {topic['topic'].title()}")
+    story = []
 
-    y -= 25
-    c.setFont("Helvetica", 12)
-    c.drawString(50, y, f"Priority: {topic['priority']} | Reason: {topic['reason']}")
+    # Title & Metadata
+    story.append(Paragraph(f"Academic Insight: {topic['topic'].title()}", title_style))
+    story.append(Paragraph(f"Priority: {topic.get('priority', 'N/A')} | Reason: {topic.get('reason', 'N/A')}", subtitle_style))
+    story.append(Spacer(1, 15))
 
     # 1. Document Extracts
-    y -= 40
-    c.setFont("Helvetica-Bold", 13)
-    c.drawString(50, y, "Contextual Points from Document:")
+    story.append(Paragraph("Contextual Points from Document", heading_style))
+    doc_points = topic.get("from_document", [])
+    if isinstance(doc_points, str):
+        # If it was saved as a single string instead of list
+        doc_points = [doc_points]
     
-    y -= 20
-    c.setFont("Helvetica", 11)
-    for point in topic.get("from_document", []):
+    for point in doc_points:
         point_str = normalize_text(point)
-        if y < 80:
-            c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 11)
-        c.drawString(60, y, f"• {point_str[:90]}...")
-        y -= 18
+        if point_str.strip():
+            story.append(Paragraph(f"<b>&bull;</b> {point_str}", body_style))
 
     # 2. Academic Knowledge
-    y -= 20
-    c.setFont("Helvetica-Bold", 13)
-    c.drawString(50, y, "Fundamental Academic Knowledge:")
-
-    y -= 20
-    c.setFont("Helvetica", 11)
-    for point in topic.get("academic_knowledge", []):
+    story.append(Paragraph("Fundamental Academic Knowledge", heading_style))
+    academic_points = topic.get("academic_knowledge", [])
+    if isinstance(academic_points, str):
+        academic_points = [academic_points]
+    
+    for point in academic_points:
         point_str = normalize_text(point)
-        if y < 80:
-            c.showPage()
-            y = height - 50
-            c.setFont("Helvetica", 11)
-        c.drawString(60, y, f"• {point_str}")
-        y -= 18
+        if point_str.strip():
+            story.append(Paragraph(f"<b>&bull;</b> {point_str}", body_style))
 
     # 3. Real-world Example
-    y -= 20
-    c.setFont("Helvetica-Bold", 13)
-    c.drawString(50, y, "Real-world Application:")
-
-    y -= 20
-    c.setFont("Helvetica", 11)
+    story.append(Paragraph("Real-world Application", heading_style))
     example = normalize_text(topic.get("real_world_example", "N/A"))
-    # Wrap text manually for the example
-    c.drawString(60, y, f"• {example[:90]}")
-    if len(example) > 90:
-        y -= 15
-        c.drawString(60, y, f"  {example[90:180]}")
+    story.append(Paragraph(f"<b>&bull;</b> {example}", body_style))
 
-    c.save()
+    # Build PDF with automatic page breaking
+    doc.build(story)
+    
     return FileResponse(temp_file.name, media_type="application/pdf", filename=f"{topic_name}_notes.pdf")
 
 # Keeping the old download-topic for backward compatibility if needed, 

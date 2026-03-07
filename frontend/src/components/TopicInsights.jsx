@@ -89,7 +89,7 @@ function TopicInsights() {
 
     return (
         <div className="insights-page">
-            <button onClick={() => navigate("/")} className="back-nav">
+            <button onClick={() => navigate("/")} className="back-nav" style={{ zIndex: 1100 }}>
                 <FaArrowLeft /> Back
             </button>
             <h1 className="page-title">{subject ? `${subject} Insights` : "Knowledge Insights"}</h1>
@@ -160,6 +160,7 @@ function TopicCard({ topicData }) {
 
 function TopicDetails({ topic }) {
     const navigate = useNavigate();
+    const [showChat, setShowChat] = useState(false);
 
     const renderArrayContent = (content) => {
         if (!content) return <li>No specific data extracted.</li>;
@@ -200,14 +201,21 @@ function TopicDetails({ topic }) {
                 )}
             </div>
 
-            <TopicChat
-                topic={topic.topic}
-                documentContext={Array.isArray(topic.from_document) ? topic.from_document.join("\n") : topic.from_document}
-            />
+            {showChat && (
+                <div className="chat-popup-container anim-slide-up">
+                    <TopicChat
+                        topic={topic.topic}
+                        documentContext={Array.isArray(topic.from_document) ? topic.from_document.join("\n") : topic.from_document}
+                    />
+                </div>
+            )}
 
             <div className="actions">
-                <button className="btn secondary">
-                    Ask AI Assistant
+                <button
+                    className={`btn secondary ${showChat ? 'active' : ''}`}
+                    onClick={() => setShowChat(!showChat)}
+                >
+                    {showChat ? "Close AI Assistant" : "Ask AI Assistant"}
                 </button>
                 <button
                     className="btn"

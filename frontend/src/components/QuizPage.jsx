@@ -72,7 +72,7 @@ function QuizPage() {
     return (
         <div className="quiz-page anim-fade-in">
             <div className="quiz-navbar">
-                <button onClick={() => navigate(-1)} className="back-btn">
+                <button onClick={() => navigate("/topics")} className="back-btn" style={{ zIndex: 1100 }}>
                     <FaArrowLeft /> Exit
                 </button>
                 <div className="quiz-info">

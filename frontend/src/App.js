@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import { FaRocket, FaFilePdf, FaRobot, FaUpload, FaCheckCircle, FaExclamationTriangle, FaChartLine } from "react-icons/fa";
-import { Routes, Route, Link, useNavigate } from "react-router-dom";
+import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
 import TopicInsights from "./components/TopicInsights";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [file, setFile] = useState(null);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -37,7 +38,8 @@ function App() {
       return;
     }
     if (!subject.trim()) {
-      setMessage("⚠️ Please enter a subject name (e.g., DSA, OS).");
+      setMessage("⚠️ Please enter a subject name (e.g., DSA, OS) before uploading.");
+      setIsUploading(false); // Ensure it's not stuck in uploading state
       return;
     }
 
@@ -85,21 +87,25 @@ function App() {
     }
   };
 
+  const isAssessment = location.pathname.startsWith("/quiz") || location.pathname === "/result";
+
   return (
     <div className="app-container">
       {/* Navbar */}
-      <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-        <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-          <img src="/assets/logo.png" alt="KnowledgeAI Logo" className="logo-img" />
-          <span>KnowledgeAI</span>
-        </div>
-        <div className="nav-links">
-          <Link to="/">Home</Link>
-          <Link to="/topics">Insights</Link>
-          <a href="#features">Features</a>
-          <a href="#upload" className="cta-btn">Get Started</a>
-        </div>
-      </nav>
+      {!isAssessment && (
+        <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
+          <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+            <img src="/assets/logo.png" alt="KnowledgeAI Logo" className="logo-img" />
+            <span>KnowledgeAI</span>
+          </div>
+          <div className="nav-links">
+            <Link to="/">Home</Link>
+            <Link to="/topics">Insights</Link>
+            <a href="#features">Features</a>
+            <a href="#upload" className="cta-btn">Get Started</a>
+          </div>
+        </nav>
+      )}
 
       <Routes>
         <Route path="/" element={
@@ -121,9 +127,11 @@ function App() {
       </Routes>
 
       {/* Footer */}
-      <footer className="footer">
-        <p>&copy; 2024 KnowledgeAI System. All rights reserved.</p>
-      </footer>
+      {!isAssessment && (
+        <footer className="footer">
+          <p>&copy; 2024 KnowledgeAI System. All rights reserved.</p>
+        </footer>
+      )}
     </div>
   );
 }

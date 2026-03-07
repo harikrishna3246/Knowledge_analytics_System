@@ -213,17 +213,26 @@
 .back-nav {
     position: absolute;
     left: 20px;
-    top: 40px;
-    background: none;
+    top: 100px;
+    background: white;
     border: 1px solid #ddd;
     color: #666;
-    padding: 6px 14px;
+    padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 8px;
+    z-index: 1100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.back-nav:hover {
+    background: #f8f9fa;
+    border-color: #ccc;
+    color: #333;
 }
 
 /* Responsive */
@@ -241,4 +250,31 @@
 .no-topics {
     text-align: center;
     padding: 60px 0;
+}
+
+.chat-popup-container {
+    margin-bottom: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+}
+
+.btn.secondary.active {
+    background: #6c47d6;
+}
+
+.anim-slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
