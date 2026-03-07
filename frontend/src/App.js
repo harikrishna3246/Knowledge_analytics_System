@@ -9,6 +9,7 @@ import ResultPage from "./components/ResultPage";
 function App() {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -35,12 +36,17 @@ function App() {
       setMessage("⚠️ Please select a file first.");
       return;
     }
+    if (!subject.trim()) {
+      setMessage("⚠️ Please enter a subject name (e.g., DSA, OS).");
+      return;
+    }
 
     setIsUploading(true);
     setMessage("🚀 Uploading document...");
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("subject", subject);
 
     try {
       // 1. Upload Document
@@ -53,7 +59,7 @@ function App() {
       if (!uploadResponse.ok) throw new Error(uploadData.error || "Upload failed");
 
       // 2. Automatically Trigger Knowledge Analysis
-      setMessage("🧠 Analyzing document content & generating deep insights...");
+      setMessage(`🧠 Analyzing document content for ${subject}...`);
 
       const analysisResponse = await fetch("http://127.0.0.1:8000/store-topics-with-content", {
         method: "POST",
@@ -100,6 +106,8 @@ function App() {
           <MainContent
             file={file}
             setFile={setFile}
+            subject={subject}
+            setSubject={setSubject}
             handleFileChange={handleFileChange}
             uploadDocument={uploadDocument}
             isUploading={isUploading}
@@ -120,7 +128,7 @@ function App() {
   );
 }
 
-function MainContent({ file, setFile, handleFileChange, uploadDocument, isUploading, message, navigate }) {
+function MainContent({ file, setFile, subject, setSubject, handleFileChange, uploadDocument, isUploading, message, navigate }) {
   return (
     <main className="main-content">
       {/* Decorative Lines and Shapes */}
@@ -169,9 +177,21 @@ function MainContent({ file, setFile, handleFileChange, uploadDocument, isUpload
       <section id="upload" className="upload-section">
         <div className="section-header">
           <h2 className="section-title">Upload Your Document</h2>
-          <p className="section-subtitle">Start the analysis by uploading your study material</p>
+          <p className="section-subtitle">Start the analysis by providing a subject and document</p>
         </div>
         <div className="glass-card upload-card">
+          <div className="subject-input-container">
+            <label htmlFor="subject-name" className="subject-label">Subject Name</label>
+            <input
+              id="subject-name"
+              type="text"
+              className="subject-field"
+              placeholder="e.g. Data Structures, Operating Systems, Biology..."
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+          </div>
+
           <div
             className={`upload-area ${file ? "has-file" : ""}`}
             onDragOver={(e) => e.preventDefault()}

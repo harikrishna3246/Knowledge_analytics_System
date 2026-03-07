@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   --bg-page: #faf7f2;
@@ -90,15 +90,8 @@ body {
 }
 
 .logo-img {
-  height: 40px;
-  width: auto;
-  object-fit: contain;
-}
-
-.logo span {
-  /* Ensure text alignment with image */
-  display: flex;
-  align-items: center;
+  width: 32px;
+  height: 32px;
 }
 
 .nav-links {
@@ -377,6 +370,40 @@ body {
   padding: 3.5rem !important;
   border-radius: 32px !important;
   box-shadow: 0 30px 60px rgba(62, 51, 46, 0.06) !important;
+}
+
+.subject-input-container {
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.subject-label {
+  display: block;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.8rem;
+  font-size: 1rem;
+  padding-left: 0.5rem;
+}
+
+.subject-field {
+  width: 100%;
+  padding: 1.2rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  outline: none;
+}
+
+.subject-field:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
 .upload-area {

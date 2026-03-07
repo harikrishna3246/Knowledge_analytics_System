@@ -4,14 +4,14 @@ import os
 # Load env before other imports
 load_dotenv(override=True)
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 from pydantic import BaseModel
 from groq_chat import topic_chat
 
-from file_reader import read_document
+from file_reader import read_document, get_file_hash
 from topic_extractor import extract_topics
 from topic_content_extractor import extract_topic_content
 from external_content_generator import generate_external_content
@@ -28,8 +28,8 @@ app = FastAPI()
 # Add CORS Middleware to allow requests from React (port 3000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify ["http://localhost:3000"]
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -57,10 +57,15 @@ def mongo_test():
     return {"message": "MongoDB connected successfully"}
 
 @app.post("/upload-document")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), subject: str = Form(...)):
     try:
         from datetime import datetime
+        import json
+        from groq_client import client
         
+        if not subject or not subject.strip():
+            return {"error": "Subject name is mandatory. Please provide a subject."}
+
         # Create 'documents' directory if it doesn't exist
         os.makedirs("documents", exist_ok=True)
         
@@ -70,32 +75,87 @@ async def upload_document(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
+        # 1. Generate Document Hash
+        file_hash = get_file_hash(file_path)
+        
+        # 2. Check if document already exists WITH THIS SUBJECT
+        existing_doc = documents_collection.find_one({"hash": file_hash, "subject": subject})
+        if existing_doc:
+            # Update timestamp to make it the "latest" document
+            documents_collection.update_one({"_id": existing_doc["_id"]}, {"$set": {"uploaded_at": datetime.utcnow()}})
+            return {
+                "message": f"Document already processed for {subject}",
+                "filename": file.filename,
+                "document_id": str(existing_doc["_id"]),
+                "already_exists": True
+            }
+
+        # 3. Extract document content and headings
+        try:
+            content, headings = read_document(file_path)
+        except Exception as e:
+            content = f"[Content extraction failed: {str(e)}]"
+            headings = []
+
+        # 4. VALIDATE SUBJECT VS DOCUMENT (AI-based consistency check)
+        validation_preview = content[:5000]
+        validation_prompt = f"""
+        Analyze the following text and determine if it belongs to the subject: '{subject}'.
+        
+        TEXT PREVIEW:
+        {validation_preview}
+        
+        Instruction:
+        - If the content is significantly related to '{subject}', return {{"match": true}}.
+        - If the content has NOTHING to do with '{subject}', return {{"match": false, "reason": "Short explanation why it doesn't match"}}.
+        
+        OUTPUT FORMAT (STRICT JSON ONLY):
+        {{"match": boolean, "reason": "string"}}
+        """
+        
+        try:
+            val_response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": validation_prompt}],
+                response_format={"type": "json_object"}
+            )
+            val_result = json.loads(val_response.choices[0].message.content)
+            
+            if not val_result.get("match", False):
+                # Remove file if it doesn't match
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                return {
+                    "error": f"Invalid Document: The content does not match the subject '{subject}'. {val_result.get('reason', '')}",
+                    "status_code": 400
+                }
+        except Exception as e:
+            print(f"Validation Error: {e}")
+
         # Get file size
         file_size = os.path.getsize(file_path)
         
-        # Extract document content
-        try:
-            content = read_document(file_path)
-        except Exception as e:
-            content = f"[Content extraction failed: {str(e)}]"
-        
-        # Store complete document data in MongoDB
+        # 5. Store complete document data in MongoDB
         document = {
             "title": file.filename,
+            "subject": subject,
+            "hash": file_hash,
             "file_path": file_path,
             "content_type": file.content_type,
             "file_size": file_size,
             "content": content,
+            "headings": headings,
             "uploaded_at": datetime.utcnow()
         }
         result = documents_collection.insert_one(document)
         
         return {
-            "message": "Document uploaded successfully",
+            "message": "Document uploaded and verified successfully",
             "filename": file.filename,
             "file_size": f"{file_size / 1024:.2f} KB",
             "content_preview": content[:200] + "..." if len(content) > 200 else content,
-            "document_id": str(result.inserted_id)
+            "document_id": str(result.inserted_id),
+            "already_exists": False
         }
     except Exception as e:
         return {"error": f"Upload failed: {str(e)}"}
@@ -141,7 +201,7 @@ def read_uploaded_document():
 
     file_path = document["file_path"]
     try:
-        content = read_document(file_path)
+        content, headings = read_document(file_path)
         return {
             "message": "Document content extracted successfully",
             "content_preview": content[:1000]
@@ -152,10 +212,14 @@ def read_uploaded_document():
 
 @app.get("/get-stored-topics")
 def get_stored_topics():
-    """Retrieve all stored topics with their document and external explanations"""
+    """Retrieve topics ONLY for the most recently uploaded/selected document"""
     try:
-        topics = list(topics_collection.find())
-        # Convert ObjectId to string for JSON serialization
+        # Find the latest document by upload time
+        latest_doc = documents_collection.find_one(sort=[("uploaded_at", -1)])
+        if not latest_doc:
+            return []
+            
+        topics = list(topics_collection.find({"document_id": latest_doc["_id"]}))
         results = []
         for t in topics:
             t["_id"] = str(t["_id"])
@@ -167,14 +231,16 @@ def get_stored_topics():
 
 @app.get("/extract-topics")
 def extract_document_topics():
-    document = documents_collection.find_one(sort=[("_id", -1)])
+    # Find the latest document by upload time
+    document = documents_collection.find_one(sort=[("uploaded_at", -1)])
     if not document:
         return {"error": "No document found"}
 
-    file_path = document["file_path"]
-    content = read_document(file_path)
+    content = document.get("content", "")
+    subject = document.get("subject", "General")
+    headings = document.get("headings", [])
 
-    topics = extract_topics(content)
+    topics = extract_topics(content, subject=subject, headings=headings)
 
     return {
         "message": "Important topics extracted successfully",
@@ -183,18 +249,39 @@ def extract_document_topics():
 
 @app.post("/store-topics-with-content")
 def store_topics_with_content():
-    # 1. Clear existing topics to prevent stale data/duplicates
-    topics_collection.delete_many({})
-
-    document = documents_collection.find_one(sort=[("_id", -1)])
+    # Find the latest document by upload time
+    document = documents_collection.find_one(sort=[("uploaded_at", -1)])
     if not document:
         return {"error": "No document found"}
 
-    file_path = document["file_path"]
-    content = read_document(file_path)
+    # 1. CHECK IF TOPICS ALREADY EXIST FOR THIS DOCUMENT HASH
+    # If the document was found by hash in upload, it might already have topics
+    existing_topics = list(topics_collection.find({"document_id": document["_id"]}))
+    if existing_topics:
+        # Format for response
+        for t in existing_topics:
+            t["_id"] = str(t["_id"])
+            t["document_id"] = str(t["document_id"])
+        return {
+            "message": "Retrieving existing topics for this document",
+            "topics": existing_topics
+        }
 
-    topics = extract_topics(content)
-    # LIMIT to prevent connection timeout during AI generation, but enough for a good overview
+    # 2. CLEAR PREVIOUS topics (only if we want to reset every time, 
+    # but since we checking hash above, we only clear if no topics found for this doc)
+    # Actually, the user wants "topics are changing if i again upload the same document it should not occur"
+    # So we should NOT clear if they are for a DIFFERENT document.
+    # But usually this system only cares about the current active document.
+    # To keep it safe, let's only clear if we are reprocessing.
+    
+    # topics_collection.delete_many({}) # Removed this to allow persistence
+
+    content = document.get("content", "")
+    subject = document.get("subject", "General")
+    headings = document.get("headings", [])
+
+    topics = extract_topics(content, subject=subject, headings=headings)
+    # LIMIT to prevent connection timeout during AI generation
     topics = topics[:15]
 
     stored_topics = []
@@ -223,7 +310,7 @@ def store_topics_with_content():
                 "from_document": normalize_text(doc_content),
                 "academic_knowledge": normalize_text(hybrid_content.get("academic_knowledge", [])),
                 "real_world_example": normalize_text(hybrid_content.get("real_world_example", "")),
-                "assessment": [] # Empty assessment as it's being removed
+                "assessment": [] 
             }
     
             topics_collection.insert_one(topic_record)
@@ -238,7 +325,7 @@ def store_topics_with_content():
             continue
 
     return {
-        "message": "Academic topics with hybrid content stored",
+        "message": f"Academic topics for {subject} stored",
         "topics": stored_topics
     }
 

@@ -53,9 +53,9 @@ def generate_external_content(topic):
         print(f"Error generating external content for {topic}: {e}")
         return {
             "academic_knowledge": [
-                f"{topic.title()} involves systematic problem solving.",
-                "It requires careful analysis of constraints.",
-                "It is a core concept in modern computing."
+                f"{topic.title()} is a fundamental concept in this field of study.",
+                "It requires a comprehensive understanding of its core principles.",
+                "It plays a significant role in advanced academic and professional applications."
             ],
-            "real_world_example": "Applied in various high-performance software systems."
+            "real_world_example": "Applied in various practical and professional scenarios."
         }

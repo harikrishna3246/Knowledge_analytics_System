@@ -1,9 +1,40 @@
 import json
 from groq_client import client
 
-def extract_topics(text):
+def get_subject_profile(subject):
+    """Generates a subject profile with key topics and concepts using AI."""
+    if not subject:
+        return {}
+    
+    prompt = f"""
+    Given the subject '{subject}', list the core concepts, keywords, and important areas 
+    used in academics and professional applications.
+    Include key techniques, fundamental theories, and common sub-topics.
+    
+    OUTPUT FORMAT (STRICT JSON ONLY):
+    {{
+      "core_topics": ["Topic 1", "Topic 2", ...],
+      "importance_keywords": ["Keyword 1", "Keyword 2", ...]
+    }}
+    """
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "system", "content": "You are a subject matter expert."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        print(f"Error generating subject profile: {e}")
+        return {"core_topics": [], "importance_keywords": []}
+
+def extract_topics(text, subject=None, headings=None):
     """
     Extracts important topics from document text using AI (Groq).
+    Focuses on headings and is aware of the subject domain.
     Returns a list of topic dicts with: topic, priority, and reason.
     """
     if not text or not text.strip():
@@ -14,28 +45,33 @@ def extract_topics(text):
             {"topic": "Error", "priority": "LOW", "reason": "AI Client not initialized"}
         ]
 
-    # Limit text length to avoid token limits, but keep enough context
-    context_text = text[:15000] 
+    # Get subject profile if subject is provided
+    subject_profile = get_subject_profile(subject) if subject else {}
+    
+    # Prepare context: focus on headings if available, otherwise use text preview
+    context_headings = "\n".join(headings[:50]) if headings else ""
+    context_text = text[:10000] # Reduced text context because we emphasize headings
 
     prompt = f"""
-    You are an AI system that analyzes documents and extracts knowledge.
+    You are an AI system that analyzes documents and extracts knowledge for the subject: {subject or 'General'}.
+    
+    SUBJECT PREVIEW (Core Concepts):
+    {json.dumps(subject_profile.get('core_topics', []), indent=2)}
 
     TASK:
-    1. Read the document text carefully.
-    2. Identify ALL meaningful topics and concepts present in the document (aim for top 15-20).
-    3. Topics must be complete phrases, not single words.
-    4. Merge related words into proper conceptual terms.
-    5. Do NOT restrict topics to any specific domain. Extract what is actually important in THIS text.
+    1. Identify topics ONLY from document headings and emphasized titles.
+       Headings found in document:
+       {context_headings}
+    
+    2. Merge related words into proper conceptual terms (e.g., merging individual keywords into their full technical phrase if they appear as separate headings).
+    3. Use the subject profile to decide priority.
+    
+    PRIORITY CRITERIA:
+    - HIGH: Matches core '{subject}' concepts or heavily emphasized in headings.
+    - MEDIUM: Supporting concepts or secondary headings.
+    - LOW: Brief mentions or peripheral topics.
 
-    For each topic:
-    - Decide its importance based ONLY on how strongly it is discussed in the document.
-    - Assign priority as:
-      - High: Core or heavily emphasized concepts
-      - Medium: Supporting or moderately discussed concepts
-      - Low: Briefly mentioned or peripheral concepts
-    - Provide a concise reason WHY this priority was assigned based on document context.
-
-    DOCUMENT TEXT:
+    DOCUMENT CONTEXT (First 10k chars):
     {context_text}
 
     OUTPUT FORMAT (STRICT JSON ONLY):
@@ -44,7 +80,7 @@ def extract_topics(text):
         {{
           "topic": "Concept Name",
           "priority": "High | Medium | Low",
-          "reason": "Explanation based on document emphasis"
+          "reason": "Explanation based on subject relevance and heading level"
         }}
       ]
     }}
@@ -54,7 +90,7 @@ def extract_topics(text):
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a technical knowledge analyzer."},
+                {"role": "system", "content": f"You are an expert in {subject or 'academic subjects'} and technical knowledge analysis."},
                 {"role": "user", "content": prompt}
             ],
             response_format={"type": "json_object"}
@@ -83,5 +119,4 @@ def extract_topics(text):
 
     except Exception as e:
         print(f"Error extracting topics with AI: {e}")
-        # Fallback to a very basic extraction or empty list
         return []
