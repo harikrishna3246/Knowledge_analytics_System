@@ -16,8 +16,8 @@ from topic_extractor import extract_topics
 from topic_content_extractor import extract_topic_content
 from external_content_generator import generate_external_content
 from assessment_generator import generate_topic_quiz
-from database import documents_collection, topics_collection
-from fastapi.responses import FileResponse
+from database import documents_collection, topics_collection, users_collection
+from fastapi.responses import FileResponse, JSONResponse
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -27,7 +27,15 @@ from reportlab.lib import colors
 import tempfile
 import os
 
+import traceback
+
 app = FastAPI()
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    print("Unhandled exception:", exc)
+    traceback.print_exc()
+    return JSONResponse(status_code=500, content={"error": str(exc)})
 
 # Add CORS Middleware to allow requests from React (port 3000)
 app.add_middleware(
@@ -58,7 +66,77 @@ def root():
 
 @app.get("/mongo-test")
 def mongo_test():
-    return {"message": "MongoDB connected successfully"}
+    try:
+        # Quick ping to ensure MongoDB connection is working
+        documents_collection.database.client.admin.command('ping')
+        return {"message": "MongoDB connected successfully"}
+    except Exception as e:
+        return {"error": "MongoDB connection failed", "details": str(e)}
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str = ""
+    name: str = ""
+    picture: str = ""
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+@app.post("/signup")
+def signup_user(data: SignupRequest):
+    print("DEBUG: /signup called with", data)
+    from datetime import datetime
+    try:
+        user = users_collection.find_one({"email": data.email})
+        if user:
+            return {"error": "Email already registered"}
+
+        users_collection.insert_one({
+            "email": data.email,
+            "password": data.password, # Note: In production, password should be hashed
+            "name": data.name,
+            "created_at": datetime.utcnow(),
+            "last_login": datetime.utcnow()
+        })
+        return {"message": "Signup successful", "email": data.email}
+    except Exception as e:
+        # Log server-side for debugging
+        print("Signup error:", e)
+        return {"error": f"Signup failed: {e}"}
+
+@app.post("/login")
+def login_user(data: LoginRequest):
+    from datetime import datetime
+    user = users_collection.find_one({"email": data.email})
+    
+    if data.password:
+        # Standard login
+        if not user or user.get("password") != data.password:
+            return {"error": "Invalid email or password"}
+        
+        users_collection.update_one(
+            {"email": data.email},
+            {"$set": {"last_login": datetime.utcnow()}}
+        )
+        return {"message": "Login successful", "email": data.email}
+    else:
+        # Google login (no password provided)
+        if not user:
+            users_collection.insert_one({
+                "email": data.email,
+                "name": data.name,
+                "picture": data.picture,
+                "created_at": datetime.utcnow(),
+                "last_login": datetime.utcnow()
+            })
+        else:
+            users_collection.update_one(
+                {"email": data.email},
+                {"$set": {"last_login": datetime.utcnow()}}
+            )
+        return {"message": "Login successful", "email": data.email}
 
 @app.post("/upload-document")
 async def upload_document(file: UploadFile = File(...), subject: str = Form(...)):

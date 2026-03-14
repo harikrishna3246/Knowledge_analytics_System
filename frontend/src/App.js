@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import { FaRocket, FaFilePdf, FaRobot, FaUpload, FaCheckCircle, FaExclamationTriangle, FaChartLine } from "react-icons/fa";
+import { FaRocket, FaFilePdf, FaRobot, FaUpload, FaCheckCircle, FaExclamationTriangle, FaChartLine, FaSignOutAlt } from "react-icons/fa";
 import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import TopicInsights from "./components/TopicInsights";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
+import LoginPage from "./components/LoginPage";
 
 function App() {
   const navigate = useNavigate();
@@ -14,6 +16,8 @@ function App() {
   const [message, setMessage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +30,26 @@ function App() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('knowledgeAI_loggedIn');
+    setIsLoggedIn(stored === 'true');
+    setAuthChecked(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked) return;
+
+    // Keep state in sync with localStorage after login/signup
+    const stored = localStorage.getItem('knowledgeAI_loggedIn');
+    setIsLoggedIn(stored === 'true');
+
+    if (stored !== 'true' && location.pathname !== '/login') {
+      navigate('/login');
+    } else if (stored === 'true' && location.pathname === '/login') {
+      navigate('/');
+    }
+  }, [authChecked, location.pathname, navigate]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -87,52 +111,69 @@ function App() {
     }
   };
 
-  const isAssessment = location.pathname.startsWith("/quiz") || location.pathname === "/result";
+  const isAssessment = location.pathname.startsWith("/quiz") || location.pathname === "/result" || location.pathname === "/login";
+
+  const handleLogout = () => {
+    localStorage.removeItem("knowledgeAI_loggedIn");
+    setIsLoggedIn(false);
+    navigate("/login");
+  };
+
+  if (!authChecked) {
+    // Wait until we know whether the user is logged in to avoid view flicker
+    return null;
+  }
 
   return (
-    <div className="app-container">
-      {/* Navbar */}
-      {!isAssessment && (
-        <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
-          <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
-            <img src="/assets/logo.png" alt="KnowledgeAI Logo" className="logo-img" />
-            <span>KnowledgeAI</span>
-          </div>
-          <div className="nav-links">
-            <Link to="/">Home</Link>
-            <Link to="/topics">Insights</Link>
-            <a href="#features">Features</a>
-            <a href="#upload" className="cta-btn">Get Started</a>
-          </div>
-        </nav>
-      )}
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
+      <div className="app-container">
+        {/* Navbar */}
+        {!isAssessment && (
+          <nav className={`navbar ${scrolled ? "scrolled" : ""}`} style={{ position: "relative" }}>
+            <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+              <img src="/assets/logo.png" alt="KnowledgeAI Logo" className="logo-img" />
+              <span>KnowledgeAI</span>
+            </div>
+            <div className="nav-links">
+              <Link to="/">Home</Link>
+              <Link to="/topics">Insights</Link>
+              <a href="#features">Features</a>
+              <a href="#upload" className="cta-btn">Get Started</a>
+              <button onClick={handleLogout} className="logout-btn">
+                <FaSignOutAlt /> Logout
+              </button>
+            </div>
+          </nav>
+        )}
 
-      <Routes>
-        <Route path="/" element={
-          <MainContent
-            file={file}
-            setFile={setFile}
-            subject={subject}
-            setSubject={setSubject}
-            handleFileChange={handleFileChange}
-            uploadDocument={uploadDocument}
-            isUploading={isUploading}
-            message={message}
-            navigate={navigate}
-          />
-        } />
-        <Route path="/topics" element={<TopicInsights />} />
-        <Route path="/quiz/:topic" element={<QuizPage />} />
-        <Route path="/result" element={<ResultPage />} />
-      </Routes>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={
+            <MainContent
+              file={file}
+              setFile={setFile}
+              subject={subject}
+              setSubject={setSubject}
+              handleFileChange={handleFileChange}
+              uploadDocument={uploadDocument}
+              isUploading={isUploading}
+              message={message}
+              navigate={navigate}
+            />
+          } />
+          <Route path="/topics" element={<TopicInsights />} />
+          <Route path="/quiz/:topic" element={<QuizPage />} />
+          <Route path="/result" element={<ResultPage />} />
+        </Routes>
 
-      {/* Footer */}
-      {!isAssessment && (
-        <footer className="footer">
-          <p>&copy; 2024 KnowledgeAI System. All rights reserved.</p>
-        </footer>
-      )}
-    </div>
+        {/* Footer */}
+        {!isAssessment && (
+          <footer className="footer">
+            <p>&copy; 2024 KnowledgeAI System. All rights reserved.</p>
+          </footer>
+        )}
+      </div>
+    </GoogleOAuthProvider>
   );
 }
 

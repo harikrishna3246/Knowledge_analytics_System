@@ -129,6 +129,31 @@ body {
   background: var(--primary);
 }
 
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 71, 87, 0.9);
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.3rem;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 12px 25px rgba(255, 71, 87, 0.16);
+}
+
+.logout-btn:hover {
+  background: rgba(255, 71, 87, 1);
+  transform: translateY(-2px);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 20px rgba(255, 71, 87, 0.2);
+}
+
 /* Hero Section */
 .hero-section {
   min-height: 90vh;
