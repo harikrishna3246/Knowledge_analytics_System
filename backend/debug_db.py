@@ -1,7 +1,18 @@
+import os
+from pathlib import Path
 from pymongo import MongoClient
+from dotenv import load_dotenv
+
+# Ensure .env is loaded from the backend folder regardless of current working dir
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+
+# Use Atlas URI when provided, otherwise fall back to localhost
+MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+
 
 def check_db():
-    client = MongoClient("mongodb://localhost:27017/")
+    client = MongoClient(MONGO_URI, connectTimeoutMS=5000)
     db = client["knowledge_db"]
     topics_col = db["topics"]
     docs_col = db["documents"]
@@ -16,6 +27,7 @@ def check_db():
     print("\nTopics in DB:")
     for t in topics_col.find():
         print(f"- Topic: {t['topic']}, Importance: {t['importance']}")
+
 
 if __name__ == "__main__":
     check_db()

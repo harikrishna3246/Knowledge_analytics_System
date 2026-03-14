@@ -1,9 +1,19 @@
-from pymongo import MongoClient
-from file_reader import read_document
 import os
+from pathlib import Path
+from pymongo import MongoClient
+from dotenv import load_dotenv
+from file_reader import read_document
+
+# Load .env from backend so this script works when run from any CWD
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+
+# Use Atlas URI when provided, otherwise fall back to localhost
+MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+
 
 def test_reader():
-    client = MongoClient("mongodb://localhost:27017/")
+    client = MongoClient(MONGO_URI, connectTimeoutMS=5000)
     db = client["knowledge_db"]
     docs_col = db["documents"]
 
