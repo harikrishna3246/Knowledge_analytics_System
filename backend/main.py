@@ -1,13 +1,17 @@
 from dotenv import load_dotenv
 import os
+from datetime import datetime, timedelta
 
 # Load env before other imports
 load_dotenv(override=True)
 
-from fastapi import FastAPI, UploadFile, File, Form
+import jwt
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import shutil
 import os
+from typing import Optional
 from pydantic import BaseModel
 from groq_chat import topic_chat
 
@@ -45,6 +49,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# JWT-based auth configuration
+JWT_SECRET = os.getenv("JWT_SECRET", "change_this_secret")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
+
+security = HTTPBearer()
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=JWT_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    user = users_collection.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
 
 def normalize_text(item):
     """Ensures AI-provided content is a string, even if it returns structured objects."""
@@ -93,14 +128,17 @@ def signup_user(data: SignupRequest):
         if user:
             return {"error": "Email already registered"}
 
-        users_collection.insert_one({
+        now = datetime.utcnow()
+        result = users_collection.insert_one({
             "email": data.email,
             "password": data.password, # Note: In production, password should be hashed
             "name": data.name,
-            "created_at": datetime.utcnow(),
-            "last_login": datetime.utcnow()
+            "created_at": now,
+            "last_login": now
         })
-        return {"message": "Signup successful", "email": data.email}
+
+        token = create_access_token({"sub": data.email, "user_id": str(result.inserted_id)})
+        return {"message": "Signup successful", "email": data.email, "token": token}
     except Exception as e:
         # Log server-side for debugging
         print("Signup error:", e)
@@ -120,7 +158,6 @@ def login_user(data: LoginRequest):
             {"email": data.email},
             {"$set": {"last_login": datetime.utcnow()}}
         )
-        return {"message": "Login successful", "email": data.email}
     else:
         # Google login (no password provided)
         if not user:
@@ -136,32 +173,42 @@ def login_user(data: LoginRequest):
                 {"email": data.email},
                 {"$set": {"last_login": datetime.utcnow()}}
             )
-        return {"message": "Login successful", "email": data.email}
+
+    token = create_access_token({"sub": data.email})
+    return {"message": "Login successful", "email": data.email, "token": token}
 
 @app.post("/upload-document")
-async def upload_document(file: UploadFile = File(...), subject: str = Form(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    subject: str = Form(...),
+    current_user: dict = Depends(get_current_user)
+):
     try:
         from datetime import datetime
         import json
         from groq_client import client
-        
+
         if not subject or not subject.strip():
             return {"error": "Subject name is mandatory. Please provide a subject."}
 
         # Create 'documents' directory if it doesn't exist
         os.makedirs("documents", exist_ok=True)
-        
+
         file_path = f"documents/{file.filename}"
-        
+
         # Save file locally
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        
+
         # 1. Generate Document Hash
         file_hash = get_file_hash(file_path)
-        
-        # 2. Check if document already exists WITH THIS SUBJECT
-        existing_doc = documents_collection.find_one({"hash": file_hash, "subject": subject})
+
+        # 2. Check if document already exists WITH THIS SUBJECT for this user
+        existing_doc = documents_collection.find_one({
+            "hash": file_hash,
+            "subject": subject,
+            "user_email": current_user.get("email")
+        })
         if existing_doc:
             # Update timestamp to make it the "latest" document
             documents_collection.update_one({"_id": existing_doc["_id"]}, {"$set": {"uploaded_at": datetime.utcnow()}})
@@ -187,6 +234,7 @@ async def upload_document(file: UploadFile = File(...), subject: str = Form(...)
             "title": file.filename,
             "subject": subject,
             "hash": file_hash,
+            "user_email": current_user.get("email"),
             "file_path": file_path,
             "content_type": file.content_type,
             "file_size": file_size,
@@ -210,10 +258,12 @@ async def upload_document(file: UploadFile = File(...), subject: str = Form(...)
 
 
 @app.get("/get-documents")
-def get_documents():
-    """Get all uploaded documents from MongoDB"""
+def get_documents(current_user: dict = Depends(get_current_user)):
+    """Get all uploaded documents for the current user"""
     try:
-        documents = list(documents_collection.find())
+        # Return docs for this user (fallback to public docs if they exist)
+        query = {"$or": [{"user_email": current_user.get("email")}, {"user_email": {"$exists": False}}]}
+        documents = list(documents_collection.find(query).sort("uploaded_at", -1))
         
         # Convert ObjectId to string and format response
         result = []
@@ -236,9 +286,15 @@ def get_documents():
 
 
 @app.get("/read-document")
-def read_uploaded_document():
-    # Get the most recent document
-    document = documents_collection.find_one(sort=[("_id", -1)])
+def read_uploaded_document(current_user: dict = Depends(get_current_user)):
+    # Get the most recent document for this user
+    document = documents_collection.find_one(
+        {"user_email": current_user.get("email")},
+        sort=[("uploaded_at", -1)]
+    )
+    if not document:
+        # Fallback to any document if user has none (legacy behavior)
+        document = documents_collection.find_one(sort=[("uploaded_at", -1)])
     if not document:
         return {"error": "No document found"}
 
@@ -258,15 +314,28 @@ def read_uploaded_document():
 
 
 @app.get("/get-stored-topics")
-def get_stored_topics():
-    """Retrieve topics ONLY for the most recently uploaded/selected document"""
+def get_stored_topics(current_user: dict = Depends(get_current_user)):
+    """Retrieve topics for the most recently uploaded document for this user"""
     try:
-        # Find the latest document by upload time
-        latest_doc = documents_collection.find_one(sort=[("uploaded_at", -1)])
+        # Find the latest document by upload time for this user
+        latest_doc = documents_collection.find_one(
+            {"user_email": current_user.get("email")},
+            sort=[("uploaded_at", -1)]
+        )
+        if not latest_doc:
+            # Fallback to any document if user has none (legacy behavior)
+            latest_doc = documents_collection.find_one(sort=[("uploaded_at", -1)])
         if not latest_doc:
             return []
             
-        topics = list(topics_collection.find({"document_id": latest_doc["_id"]}))
+        topics = list(topics_collection.find({
+            "document_id": latest_doc["_id"],
+            "user_email": current_user.get("email")
+        }))
+        if not topics:
+            # fallback to legacy topics without user_email
+            topics = list(topics_collection.find({"document_id": latest_doc["_id"]}))
+
         results = []
         for t in topics:
             t["_id"] = str(t["_id"])
@@ -295,15 +364,28 @@ def extract_document_topics():
     }
 
 @app.post("/store-topics-with-content")
-def store_topics_with_content():
-    # Find the latest document by upload time
-    document = documents_collection.find_one(sort=[("uploaded_at", -1)])
+def store_topics_with_content(current_user: dict = Depends(get_current_user)):
+    # Find the latest document by upload time for this user
+    document = documents_collection.find_one(
+        {"user_email": current_user.get("email")},
+        sort=[("uploaded_at", -1)]
+    )
+    if not document:
+        # Fallback to any document if user has none (legacy behavior)
+        document = documents_collection.find_one(sort=[("uploaded_at", -1)])
     if not document:
         return {"error": "No document found"}
 
     # 1. CHECK IF TOPICS ALREADY EXIST FOR THIS DOCUMENT HASH
     # If the document was found by hash in upload, it might already have topics
-    existing_topics = list(topics_collection.find({"document_id": document["_id"]}))
+    existing_topics = list(topics_collection.find({
+        "document_id": document["_id"],
+        "user_email": current_user.get("email")
+    }))
+    if not existing_topics:
+        # fallback to legacy topics without user_email
+        existing_topics = list(topics_collection.find({"document_id": document["_id"]}))
+
     if existing_topics:
         # Format for response
         for t in existing_topics:
@@ -351,6 +433,7 @@ def store_topics_with_content():
 
             topic_record = {
                 "document_id": document["_id"],
+                "user_email": current_user.get("email"),
                 "topic": topic_name,
                 "priority": priority,
                 "reason": reason,
@@ -377,8 +460,8 @@ def store_topics_with_content():
     }
 
 @app.get("/download-topic-pdf/{topic_name}")
-def download_topic_pdf(topic_name: str):
-    topic = topics_collection.find_one({"topic": topic_name})
+def download_topic_pdf(topic_name: str, current_user: dict = Depends(get_current_user)):
+    topic = topics_collection.find_one({"topic": topic_name, "user_email": current_user.get("email")})
     if not topic:
         return {"error": "Topic not found"}
 
@@ -476,8 +559,8 @@ def download_topic_pdf(topic_name: str):
 # Keeping the old download-topic for backward compatibility if needed, 
 # but recommendation is to use PDF.
 @app.get("/download-topic/{topic_name}")
-def download_topic(topic_name: str):
-    topic = topics_collection.find_one({"topic": topic_name})
+def download_topic(topic_name: str, current_user: dict = Depends(get_current_user)):
+    topic = topics_collection.find_one({"topic": topic_name, "user_email": current_user.get("email")})
     if not topic:
         return {"error": "Topic not found"}
 
@@ -512,7 +595,7 @@ class ChatRequest(BaseModel):
     document_context: str = ""
 
 @app.post("/chat")
-def chat_with_topic(data: ChatRequest):
+def chat_with_topic(data: ChatRequest, current_user: dict = Depends(get_current_user)):
     answer = topic_chat(
         topic=data.topic,
         question=data.question,
@@ -521,7 +604,7 @@ def chat_with_topic(data: ChatRequest):
     return {"answer": answer}
 
 @app.post("/generate-quiz")
-def generate_quiz_endpoint(data: dict):
+def generate_quiz_endpoint(data: dict, current_user: dict = Depends(get_current_user)):
     topic = data.get("topic")
     if not topic:
         return {"error": "Topic is required"}

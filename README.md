@@ -7,7 +7,7 @@ This is the backend for the Knowledge Analytics System.
 1.  Navigate to the `backend` directory.
 2.  Create a virtual environment: `python -m venv venv`
 3.  Activate the virtual environment.
-4.  Install dependencies: `pip install fastapi uvicorn pymongo python-dotenv certifi dnspython`
+4.  Install dependencies: `pip install fastapi uvicorn pymongo python-dotenv certifi dnspython pyjwt`
 
 ### MongoDB Atlas (Cloud)
 

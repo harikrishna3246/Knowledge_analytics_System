@@ -50,6 +50,8 @@ const LoginPage = () => {
                 } else {
                     localStorage.removeItem('knowledgeAI_email');
                 }
+
+                localStorage.setItem('knowledgeAI_token', data.token || '');
                 localStorage.setItem('knowledgeAI_loggedIn', 'true');
                 navigate('/');
             } else {

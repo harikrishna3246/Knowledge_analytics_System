@@ -18,8 +18,12 @@ function TopicInsights() {
         const fetchData = async () => {
             setLoading(true);
             try {
+                const token = localStorage.getItem('knowledgeAI_token');
+
                 // 1. Get topics
-                const res = await fetch("http://127.0.0.1:8000/get-stored-topics");
+                const res = await fetch("http://127.0.0.1:8000/get-stored-topics", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
                 if (!res.ok) throw new Error("Failed to fetch topics");
                 const data = await res.json();
 
@@ -32,7 +36,9 @@ function TopicInsights() {
                 }
 
                 // 2. Get the latest document to show subject
-                const docsRes = await fetch("http://127.0.0.1:8000/get-documents");
+                const docsRes = await fetch("http://127.0.0.1:8000/get-documents", {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
                 const docsData = await docsRes.json();
                 if (docsData.documents && docsData.documents.length > 0) {
                     setSubject(docsData.documents[0].subject);
@@ -51,12 +57,16 @@ function TopicInsights() {
         setLoading(true);
         setError(null);
         try {
+            const token = localStorage.getItem('knowledgeAI_token');
             const res = await fetch("http://127.0.0.1:8000/store-topics-with-content", {
                 method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error("Analysis failed");
 
-            const refreshRes = await fetch("http://127.0.0.1:8000/get-stored-topics");
+            const refreshRes = await fetch("http://127.0.0.1:8000/get-stored-topics", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const data = await refreshRes.json();
             setTopics(data);
         } catch (err) {
@@ -223,14 +233,33 @@ function TopicDetails({ topic }) {
                 >
                     Take Assessment
                 </button>
-                <a
+                <button
                     className="btn outline"
-                    href={`http://127.0.0.1:8000/download-topic-pdf/${encodeURIComponent(topic.topic)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    onClick={async () => {
+                        const token = localStorage.getItem('knowledgeAI_token');
+                        try {
+                            const res = await fetch(
+                                `http://127.0.0.1:8000/download-topic-pdf/${encodeURIComponent(topic.topic)}`,
+                                { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            if (!res.ok) throw new Error('Failed to download PDF');
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${topic.topic}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            URL.revokeObjectURL(url);
+                        } catch (err) {
+                            console.error(err);
+                            alert('Failed to download PDF.');
+                        }
+                    }}
                 >
                     <FaFileDownload /> Export PDF
-                </a>
+                </button>
             </div>
         </div>
     );

@@ -32,8 +32,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem('knowledgeAI_loggedIn');
-    setIsLoggedIn(stored === 'true');
+    const token = localStorage.getItem('knowledgeAI_token');
+    setIsLoggedIn(!!token);
     setAuthChecked(true);
   }, []);
 
@@ -41,12 +41,13 @@ function App() {
     if (!authChecked) return;
 
     // Keep state in sync with localStorage after login/signup
-    const stored = localStorage.getItem('knowledgeAI_loggedIn');
-    setIsLoggedIn(stored === 'true');
+    const token = localStorage.getItem('knowledgeAI_token');
+    const loggedIn = !!token;
+    setIsLoggedIn(loggedIn);
 
-    if (stored !== 'true' && location.pathname !== '/login') {
+    if (!loggedIn && location.pathname !== '/login') {
       navigate('/login');
-    } else if (stored === 'true' && location.pathname === '/login') {
+    } else if (loggedIn && location.pathname === '/login') {
       navigate('/');
     }
   }, [authChecked, location.pathname, navigate]);
@@ -76,8 +77,10 @@ function App() {
 
     try {
       // 1. Upload Document
+      const token = localStorage.getItem('knowledgeAI_token');
       const uploadResponse = await fetch("http://127.0.0.1:8000/upload-document", {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
@@ -89,6 +92,7 @@ function App() {
 
       const analysisResponse = await fetch("http://127.0.0.1:8000/store-topics-with-content", {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!analysisResponse.ok) {
@@ -115,6 +119,8 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("knowledgeAI_loggedIn");
+    localStorage.removeItem("knowledgeAI_token");
+    localStorage.removeItem("knowledgeAI_email");
     setIsLoggedIn(false);
     navigate("/login");
   };

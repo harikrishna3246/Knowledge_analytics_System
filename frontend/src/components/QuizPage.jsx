@@ -15,9 +15,13 @@ function QuizPage() {
     useEffect(() => {
         const fetchQuiz = async () => {
             try {
+                const token = localStorage.getItem('knowledgeAI_token');
                 const res = await fetch("http://127.0.0.1:8000/generate-quiz", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
                     body: JSON.stringify({ topic: decodeURIComponent(topic) })
                 });
                 const data = await res.json();
