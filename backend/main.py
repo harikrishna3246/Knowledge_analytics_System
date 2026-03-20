@@ -20,7 +20,7 @@ from topic_extractor import extract_topics
 from topic_content_extractor import extract_topic_content
 from external_content_generator import generate_external_content
 from assessment_generator import generate_topic_quiz
-from database import documents_collection, topics_collection, users_collection
+from database import documents_collection, topics_collection, users_collection, assessments_collection
 from fastapi.responses import FileResponse, JSONResponse
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -118,6 +118,7 @@ class SignupRequest(BaseModel):
     email: str
     password: str
     name: str = ""
+    picture: str = ""
 
 @app.post("/signup")
 def signup_user(data: SignupRequest):
@@ -133,6 +134,7 @@ def signup_user(data: SignupRequest):
             "email": data.email,
             "password": data.password, # Note: In production, password should be hashed
             "name": data.name,
+            "picture": data.picture,
             "created_at": now,
             "last_login": now
         })
@@ -169,9 +171,15 @@ def login_user(data: LoginRequest):
                 "last_login": datetime.utcnow()
             })
         else:
+            update_data = {"last_login": datetime.utcnow()}
+            if data.name:
+                update_data["name"] = data.name
+            if data.picture:
+                update_data["picture"] = data.picture
+            
             users_collection.update_one(
                 {"email": data.email},
-                {"$set": {"last_login": datetime.utcnow()}}
+                {"$set": update_data}
             )
 
     token = create_access_token({"sub": data.email})
@@ -313,28 +321,41 @@ def read_uploaded_document(current_user: dict = Depends(get_current_user)):
         return {"error": f"Failed to read document: {str(e)}"}
 
 
+from bson import ObjectId
+
 @app.get("/get-stored-topics")
-def get_stored_topics(current_user: dict = Depends(get_current_user)):
-    """Retrieve topics for the most recently uploaded document for this user"""
+def get_stored_topics(document_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    """Retrieve topics for the optionally provided document_id, or the most recently uploaded document for this user"""
     try:
-        # Find the latest document by upload time for this user
-        latest_doc = documents_collection.find_one(
-            {"user_email": current_user.get("email")},
-            sort=[("uploaded_at", -1)]
-        )
-        if not latest_doc:
-            # Fallback to any document if user has none (legacy behavior)
-            latest_doc = documents_collection.find_one(sort=[("uploaded_at", -1)])
-        if not latest_doc:
+        target_doc = None
+        if document_id:
+            target_doc = documents_collection.find_one({
+                "_id": ObjectId(document_id),
+                "user_email": current_user.get("email")
+            })
+            if not target_doc:
+                return []
+        
+        if not target_doc:
+            # Find the latest document by upload time for this user
+            target_doc = documents_collection.find_one(
+                {"user_email": current_user.get("email")},
+                sort=[("uploaded_at", -1)]
+            )
+            if not target_doc:
+                # Fallback to any document if user has none (legacy behavior)
+                target_doc = documents_collection.find_one(sort=[("uploaded_at", -1)])
+                
+        if not target_doc:
             return []
             
         topics = list(topics_collection.find({
-            "document_id": latest_doc["_id"],
+            "document_id": target_doc["_id"],
             "user_email": current_user.get("email")
         }))
         if not topics:
             # fallback to legacy topics without user_email
-            topics = list(topics_collection.find({"document_id": latest_doc["_id"]}))
+            topics = list(topics_collection.find({"document_id": target_doc["_id"]}))
 
         results = []
         for t in topics:
@@ -364,12 +385,22 @@ def extract_document_topics():
     }
 
 @app.post("/store-topics-with-content")
-def store_topics_with_content(current_user: dict = Depends(get_current_user)):
-    # Find the latest document by upload time for this user
-    document = documents_collection.find_one(
-        {"user_email": current_user.get("email")},
-        sort=[("uploaded_at", -1)]
-    )
+def store_topics_with_content(document_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
+    from bson import ObjectId
+    document = None
+    
+    if document_id:
+        document = documents_collection.find_one({
+            "_id": ObjectId(document_id),
+            "user_email": current_user.get("email")
+        })
+        
+    if not document:
+        # Find the latest document by upload time for this user
+        document = documents_collection.find_one(
+            {"user_email": current_user.get("email")},
+            sort=[("uploaded_at", -1)]
+        )
     if not document:
         # Fallback to any document if user has none (legacy behavior)
         document = documents_collection.find_one(sort=[("uploaded_at", -1)])
@@ -609,6 +640,85 @@ def generate_quiz_endpoint(data: dict, current_user: dict = Depends(get_current_
     if not topic:
         return {"error": "Topic is required"}
     return generate_topic_quiz(topic)
+
+class SaveAssessmentRequest(BaseModel):
+    topic: str
+    score: int
+    total: int
+    percentage: int
+
+@app.post("/save-assessment")
+def save_assessment(data: SaveAssessmentRequest, current_user: dict = Depends(get_current_user)):
+    try:
+        assessments_collection.insert_one({
+            "user_email": current_user.get("email"),
+            "topic": data.topic,
+            "score": data.score,
+            "total": data.total,
+            "percentage": data.percentage,
+            "completed_at": datetime.utcnow()
+        })
+        return {"message": "Assessment saved successfully"}
+    except Exception as e:
+        return {"error": f"Failed to save assessment: {str(e)}"}
+
+@app.get("/user-dashboard")
+def get_user_dashboard(current_user: dict = Depends(get_current_user)):
+    try:
+        user_info = {
+            "name": current_user.get("name", ""),
+            "email": current_user.get("email", ""),
+            "picture": current_user.get("picture", "")
+        }
+
+        # Fetch recent documents
+        recent_docs = list(documents_collection.find(
+            {"user_email": current_user.get("email")}
+        ).sort("uploaded_at", -1).limit(10))
+
+        docs_formatted = []
+        for doc in recent_docs:
+            # Fetch topics for this document
+            doc_topics = list(topics_collection.find({
+                "document_id": doc["_id"],
+                "user_email": current_user.get("email")
+            }))
+            if not doc_topics:
+                doc_topics = list(topics_collection.find({"document_id": doc["_id"]}))
+                
+            topics_formatted = [{"topic": t.get("topic", "Unknown"), "priority": t.get("priority", "N/A")} for t in doc_topics]
+                
+            docs_formatted.append({
+                "id": str(doc["_id"]),
+                "title": doc.get("title", "Unknown"),
+                "subject": doc.get("subject", ""),
+                "uploaded_at": doc.get("uploaded_at").isoformat() if doc.get("uploaded_at") else "",
+                "topics": topics_formatted
+            })
+
+        # Fetch recent assessments
+        recent_assessments = list(assessments_collection.find(
+            {"user_email": current_user.get("email")}
+        ).sort("completed_at", -1).limit(10))
+
+        assessments_formatted = []
+        for a in recent_assessments:
+            assessments_formatted.append({
+                "id": str(a["_id"]),
+                "topic": a.get("topic", "Unknown"),
+                "score": a.get("score", 0),
+                "total": a.get("total", 0),
+                "percentage": a.get("percentage", 0),
+                "completed_at": a.get("completed_at").isoformat() if a.get("completed_at") else ""
+            })
+
+        return {
+            "user": user_info,
+            "documents": docs_formatted,
+            "assessments": assessments_formatted
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch dashboard data: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn

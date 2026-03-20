@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import { FaRocket, FaFilePdf, FaRobot, FaUpload, FaCheckCircle, FaExclamationTriangle, FaChartLine, FaSignOutAlt } from "react-icons/fa";
-import { Routes, Route, Link, useNavigate, useLocation } from "react-router-dom";
+import { FaRocket, FaFilePdf, FaRobot, FaUpload, FaCheckCircle, FaExclamationTriangle, FaSignOutAlt } from "react-icons/fa";
+import { Routes, Route, Link, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import TopicInsights from "./components/TopicInsights";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 import LoginPage from "./components/LoginPage";
+import Dashboard from "./components/Dashboard";
 
 function App() {
   const navigate = useNavigate();
@@ -48,9 +49,18 @@ function App() {
     if (!loggedIn && location.pathname !== '/login') {
       navigate('/login');
     } else if (loggedIn && location.pathname === '/login') {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [authChecked, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (location.pathname === "/") {
+      setFile(null);
+      setSubject("");
+      setMessage("");
+      setIsUploading(false);
+    }
+  }, [location.pathname]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -134,17 +144,15 @@ function App() {
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <div className="app-container">
         {/* Navbar */}
-        {!isAssessment && (
+        {!isAssessment && isLoggedIn && (
           <nav className={`navbar ${scrolled ? "scrolled" : ""}`} style={{ position: "relative" }}>
             <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
               <img src="/assets/logo.png" alt="KnowledgeAI Logo" className="logo-img" />
               <span>KnowledgeAI</span>
             </div>
             <div className="nav-links">
-              <Link to="/">Home</Link>
-              <Link to="/topics">Insights</Link>
-              <a href="#features">Features</a>
-              <a href="#upload" className="cta-btn">Get Started</a>
+              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/">New Analysis</Link>
               <button onClick={handleLogout} className="logout-btn">
                 <FaSignOutAlt /> Logout
               </button>
@@ -154,18 +162,23 @@ function App() {
 
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/" element={
-            <MainContent
-              file={file}
-              setFile={setFile}
-              subject={subject}
-              setSubject={setSubject}
-              handleFileChange={handleFileChange}
-              uploadDocument={uploadDocument}
-              isUploading={isUploading}
-              message={message}
-              navigate={navigate}
-            />
+            isLoggedIn ? (
+              <MainContent
+                file={file}
+                setFile={setFile}
+                subject={subject}
+                setSubject={setSubject}
+                handleFileChange={handleFileChange}
+                uploadDocument={uploadDocument}
+                isUploading={isUploading}
+                message={message}
+                navigate={navigate}
+              />
+            ) : (
+              <Navigate to="/login" />
+            )
           } />
           <Route path="/topics" element={<TopicInsights />} />
           <Route path="/quiz/:topic" element={<QuizPage />} />
@@ -207,7 +220,6 @@ function MainContent({ file, setFile, subject, setSubject, handleFileChange, upl
           </p>
           <div className="hero-buttons">
             <a href="#upload" className="primary-btn">Analyze Document <FaRocket /></a>
-            <button onClick={() => navigate("/topics")} className="secondary-btn">View Insights <FaChartLine /></button>
           </div>
         </div>
         <div className="hero-visual">

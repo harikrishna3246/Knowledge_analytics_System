@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaEnvelope, FaLock, FaSignInAlt } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaSignInAlt, FaCamera } from 'react-icons/fa';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
+import { apiUrl } from '../apiConfig';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -10,6 +11,7 @@ const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [picture, setPicture] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const navigate = useNavigate();
@@ -22,6 +24,17 @@ const LoginPage = () => {
         }
     }, []);
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPicture(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleGoogleSuccess = (credentialResponse) => {
         const decoded = jwtDecode(credentialResponse.credential);
         const { email, name, picture } = decoded;
@@ -30,7 +43,7 @@ const LoginPage = () => {
 
     const handleAuth = async (userEmail, userName, userPicture, userPassword = "") => {
         try {
-            const response = await fetch("http://127.0.0.1:8000/login", {
+            const response = await fetch(apiUrl("/login"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: userEmail, name: userName, picture: userPicture, password: userPassword })
@@ -53,7 +66,7 @@ const LoginPage = () => {
 
                 localStorage.setItem('knowledgeAI_token', data.token || '');
                 localStorage.setItem('knowledgeAI_loggedIn', 'true');
-                navigate('/');
+                navigate('/dashboard');
             } else {
                 setErrorMsg(data.error || `Login failed (${response.status})`);
             }
@@ -75,10 +88,10 @@ const LoginPage = () => {
             await handleAuth(email, "", "", password);
         } else {
             try {
-                const response = await fetch("http://127.0.0.1:8000/signup", {
+                const response = await fetch(apiUrl("/signup"), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: email, name: name, password: password })
+                    body: JSON.stringify({ email: email, name: name, password: password, picture: picture })
                 });
 
                 let data;
@@ -91,7 +104,7 @@ const LoginPage = () => {
 
                 if (response.ok && !data.error) {
                     // Successful signup, auto-login
-                    await handleAuth(email, name, "", password);
+                    await handleAuth(email, name, picture, password);
                 } else {
                     setErrorMsg(data.error || `Signup failed (${response.status})`);
                 }
@@ -127,6 +140,21 @@ const LoginPage = () => {
                     {errorMsg && <div className="error-message">{errorMsg}</div>}
 
                     <form onSubmit={handleSignup} className="form-grid">
+                        {!isLogin && (
+                            <div className="profile-upload-container">
+                                <label className="profile-upload-label">
+                                    <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
+                                    {picture ? (
+                                        <img src={picture} alt="Profile Preview" className="profile-preview" />
+                                    ) : (
+                                        <div className="profile-upload-placeholder">
+                                            <FaCamera />
+                                        </div>
+                                    )}
+                                </label>
+                            </div>
+                        )}
+                        
                         {!isLogin && (
                             <div className="input-field">
                                 <FaSignInAlt className="input-icon" />

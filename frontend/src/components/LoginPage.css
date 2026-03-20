@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 /* ---------- Container ---------- */
 .login-container {
@@ -314,6 +314,47 @@
 
 .toggle-mode span:hover {
     text-decoration: underline;
+}
+
+/* ---------- Profile Image Upload ---------- */
+.profile-upload-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px;
+}
+
+.profile-upload-label {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.profile-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(194, 155, 124, 0.9);
+    box-shadow: 0 4px 10px rgba(42, 36, 33, 0.1);
+}
+
+.profile-upload-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: rgba(194, 155, 124, 0.15);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    color: rgba(130, 113, 103, 0.9);
+    border: 2px dashed rgba(194, 155, 124, 0.6);
+    transition: all 0.3s ease;
+}
+
+.profile-upload-placeholder:hover {
+    border-color: rgba(194, 155, 124, 0.9);
+    color: rgba(194, 155, 124, 0.9);
+    background-color: rgba(194, 155, 124, 0.25);
 }
 
 @media (max-width: 640px) {

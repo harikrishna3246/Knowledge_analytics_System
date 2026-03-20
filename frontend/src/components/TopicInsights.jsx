@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FaFileAlt, FaLightbulb, FaFileDownload, FaArrowLeft, FaClock, FaBrain, FaRocket } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import TopicChat from "./TopicChat";
 import "./TopicInsights.css";
 
@@ -13,15 +13,18 @@ function TopicInsights() {
     const [filter, setFilter] = useState("ALL");
 
     const navigate = useNavigate();
+    const location = useLocation();
+    const document_id = location.state?.document_id || null;
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
                 const token = localStorage.getItem('knowledgeAI_token');
+                const queryParam = document_id ? `?document_id=${document_id}` : "";
 
                 // 1. Get topics
-                const res = await fetch("http://127.0.0.1:8000/get-stored-topics", {
+                const res = await fetch(`http://127.0.0.1:8000/get-stored-topics${queryParam}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to fetch topics");
@@ -41,7 +44,16 @@ function TopicInsights() {
                 });
                 const docsData = await docsRes.json();
                 if (docsData.documents && docsData.documents.length > 0) {
-                    setSubject(docsData.documents[0].subject);
+                    if (document_id) {
+                        const targetDoc = docsData.documents.find(d => d.id === document_id);
+                        if (targetDoc) {
+                            setSubject(targetDoc.subject || targetDoc.title);
+                        } else {
+                            setSubject(docsData.documents[0].subject);
+                        }
+                    } else {
+                        setSubject(docsData.documents[0].subject);
+                    }
                 }
             } catch (err) {
                 setError(err.message);
@@ -58,13 +70,15 @@ function TopicInsights() {
         setError(null);
         try {
             const token = localStorage.getItem('knowledgeAI_token');
-            const res = await fetch("http://127.0.0.1:8000/store-topics-with-content", {
+            const queryParam = document_id ? `?document_id=${document_id}` : "";
+
+            const res = await fetch(`http://127.0.0.1:8000/store-topics-with-content${queryParam}`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error("Analysis failed");
 
-            const refreshRes = await fetch("http://127.0.0.1:8000/get-stored-topics", {
+            const refreshRes = await fetch(`http://127.0.0.1:8000/get-stored-topics${queryParam}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await refreshRes.json();

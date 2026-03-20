@@ -1,14 +1,18 @@
+import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaTrophy, FaRedo, FaHome, FaCheckCircle, FaTimesCircle, FaExclamationCircle } from "react-icons/fa";
+import { apiUrl } from "../apiConfig";
 import "./ResultPage.css";
 
 function ResultPage() {
     const { state } = useLocation();
     const navigate = useNavigate();
 
-    if (!state) return <div>No evidence found.</div>;
+    const hasSaved = useRef(false);
 
-    const { questions, answers, topic } = state;
+    const questions = state?.questions || [];
+    const answers = state?.answers || [];
+    const topic = state?.topic || "";
 
     let score = 0;
     let totalMCQ = 0;
@@ -22,7 +26,38 @@ function ResultPage() {
         }
     });
 
-    const percentage = Math.round((score / totalMCQ) * 100);
+    const percentage = totalMCQ > 0 ? Math.round((score / totalMCQ) * 100) : 0;
+
+    useEffect(() => {
+        const saveScore = async () => {
+            if (hasSaved.current || totalMCQ === 0 || !topic) return;
+            hasSaved.current = true;
+            const token = localStorage.getItem('knowledgeAI_token');
+            if (token) {
+                try {
+                    await fetch(apiUrl('/save-assessment'), {
+                        method: "POST",
+                        headers: { 
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            topic: topic,
+                            score: score,
+                            total: totalMCQ,
+                            percentage: percentage
+                        })
+                    });
+                    hasSaved.current = true;
+                } catch (e) {
+                    console.error("Failed to save score", e);
+                }
+            }
+        };
+        saveScore();
+    }, [topic, score, totalMCQ, percentage]);
+
+    if (!state) return <div>No evidence found.</div>;
 
     return (
         <div className="result-page anim-fade-in">
