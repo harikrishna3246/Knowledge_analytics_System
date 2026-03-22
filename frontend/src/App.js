@@ -33,7 +33,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('knowledgeAI_token');
+    const token = sessionStorage.getItem('knowledgeAI_token');
     setIsLoggedIn(!!token);
     setAuthChecked(true);
   }, []);
@@ -41,15 +41,18 @@ function App() {
   useEffect(() => {
     if (!authChecked) return;
 
-    // Keep state in sync with localStorage after login/signup
-    const token = localStorage.getItem('knowledgeAI_token');
+    // Keep state in sync with sessionStorage after login/signup
+    const token = sessionStorage.getItem('knowledgeAI_token');
     const loggedIn = !!token;
     setIsLoggedIn(loggedIn);
 
     if (!loggedIn && location.pathname !== '/login') {
       navigate('/login');
-    } else if (loggedIn && location.pathname === '/login') {
-      navigate('/dashboard');
+    }
+    
+    // If they hit the root, take them to login first
+    if (location.pathname === '/') {
+      navigate('/login');
     }
   }, [authChecked, location.pathname, navigate]);
 
@@ -128,9 +131,8 @@ function App() {
   const isAssessment = location.pathname.startsWith("/quiz") || location.pathname === "/result" || location.pathname === "/login";
 
   const handleLogout = () => {
-    localStorage.removeItem("knowledgeAI_loggedIn");
-    localStorage.removeItem("knowledgeAI_token");
-    localStorage.removeItem("knowledgeAI_email");
+    sessionStorage.removeItem("knowledgeAI_loggedIn");
+    sessionStorage.removeItem("knowledgeAI_token");
     setIsLoggedIn(false);
     navigate("/login");
   };
@@ -146,13 +148,13 @@ function App() {
         {/* Navbar */}
         {!isAssessment && isLoggedIn && (
           <nav className={`navbar ${scrolled ? "scrolled" : ""}`} style={{ position: "relative" }}>
-            <div className="logo" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
+            <div className="logo" onClick={() => navigate("/home")} style={{ cursor: "pointer" }}>
               <img src="/assets/logo.png" alt="KnowledgeAI Logo" className="logo-img" />
               <span>KnowledgeAI</span>
             </div>
             <div className="nav-links">
-              <Link to="/dashboard">Dashboard</Link>
-              <Link to="/">New Analysis</Link>
+            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/home">New Analysis</Link>
               <button onClick={handleLogout} className="logout-btn">
                 <FaSignOutAlt /> Logout
               </button>
@@ -163,7 +165,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/" element={
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/home" element={
             isLoggedIn ? (
               <MainContent
                 file={file}

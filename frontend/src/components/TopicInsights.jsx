@@ -20,7 +20,7 @@ function TopicInsights() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const token = localStorage.getItem('knowledgeAI_token');
+                const token = sessionStorage.getItem('knowledgeAI_token');
                 const queryParam = document_id ? `?document_id=${document_id}` : "";
 
                 // 1. Get topics
@@ -69,7 +69,7 @@ function TopicInsights() {
         setLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem('knowledgeAI_token');
+            const token = sessionStorage.getItem('knowledgeAI_token');
             const queryParam = document_id ? `?document_id=${document_id}` : "";
 
             const res = await fetch(`http://127.0.0.1:8000/store-topics-with-content${queryParam}`, {
@@ -113,7 +113,7 @@ function TopicInsights() {
 
     return (
         <div className="insights-page">
-            <button onClick={() => navigate("/")} className="back-nav" style={{ zIndex: 1100 }}>
+            <button onClick={() => navigate("/home")} className="back-nav" style={{ zIndex: 1100 }}>
                 <FaArrowLeft /> Back
             </button>
             <h1 className="page-title">{subject ? `${subject} Insights` : "Knowledge Insights"}</h1>
@@ -250,7 +250,7 @@ function TopicDetails({ topic }) {
                 <button
                     className="btn outline"
                     onClick={async () => {
-                        const token = localStorage.getItem('knowledgeAI_token');
+                        const token = sessionStorage.getItem('knowledgeAI_token');
                         try {
                             const res = await fetch(
                                 `http://127.0.0.1:8000/download-topic-pdf/${encodeURIComponent(topic.topic)}`,

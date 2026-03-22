@@ -12,7 +12,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
-            const token = localStorage.getItem('knowledgeAI_token');
+            const token = sessionStorage.getItem('knowledgeAI_token');
             if (!token) {
                 navigate('/login');
                 return;

@@ -64,8 +64,8 @@ const LoginPage = () => {
                     localStorage.removeItem('knowledgeAI_email');
                 }
 
-                localStorage.setItem('knowledgeAI_token', data.token || '');
-                localStorage.setItem('knowledgeAI_loggedIn', 'true');
+                sessionStorage.setItem('knowledgeAI_token', data.token || '');
+                sessionStorage.setItem('knowledgeAI_loggedIn', 'true');
                 navigate('/dashboard');
             } else {
                 setErrorMsg(data.error || `Login failed (${response.status})`);

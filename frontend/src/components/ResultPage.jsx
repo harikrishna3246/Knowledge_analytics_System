@@ -32,7 +32,7 @@ function ResultPage() {
         const saveScore = async () => {
             if (hasSaved.current || totalMCQ === 0 || !topic) return;
             hasSaved.current = true;
-            const token = localStorage.getItem('knowledgeAI_token');
+            const token = sessionStorage.getItem('knowledgeAI_token');
             if (token) {
                 try {
                     await fetch(apiUrl('/save-assessment'), {
@@ -121,7 +121,7 @@ function ResultPage() {
                             <FaRedo /> Take Re-assessment
                         </button>
                     )}
-                    <button onClick={() => navigate("/")} className="btn-home">
+                    <button onClick={() => navigate("/home")} className="btn-home">
                         <FaHome /> Back to Home
                     </button>
                 </div>
