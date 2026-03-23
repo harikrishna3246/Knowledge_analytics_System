@@ -41,17 +41,18 @@ async def global_exception_handler(request, exc):
     traceback.print_exc()
     return JSONResponse(status_code=500, content={"error": str(exc)})
 
-# Add CORS Middleware to allow requests from React (port 3000)
+# Add CORS Middleware to allow requests from React
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[frontend_url],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # JWT-based auth configuration
-JWT_SECRET = os.getenv("JWT_SECRET", "change_this_secret")
+JWT_SECRET = os.getenv("JWT_SECRET", "1f9589992df49905725323cf6a326caf858179f4cc51137842bb56423f5be723")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
 

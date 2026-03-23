@@ -140,7 +140,43 @@ KnowledgeAI is a state-of-the-art, AI-powered platform designed to transform sta
 
 ---
 
-## 📊 Database Schema (MongoDB Atlas)
+## � Deployment Instructions
+
+### **Backend Deployment (Heroku)**
+
+1. Ensure you have a Heroku account and Heroku CLI installed.
+2. From the project root:
+   ```bash
+   cd backend
+   heroku create your-app-name
+   heroku config:set MONGODB_URI=your_atlas_connection_string
+   heroku config:set GROQ_API_KEY=your_groq_key
+   heroku config:set JWT_SECRET=your_jwt_secret
+   git push heroku main
+   ```
+
+### **Frontend Deployment (Netlify/Vercel)**
+
+1. Build the frontend:
+   ```bash
+   cd frontend
+   npm run build
+   ```
+2. Deploy the `build` folder to Netlify or Vercel.
+3. Set environment variables if needed (e.g., Google Client ID).
+
+### **Full-Stack Deployment (Docker)**
+
+1. Build and run with Docker:
+   ```bash
+   docker build -t knowledge-ai .
+   docker run -p 8000:8000 knowledge-ai
+   ```
+   Note: For production, configure environment variables in Docker.
+
+---
+
+## �📊 Database Schema (MongoDB Atlas)
 
 - **Users**: Profile data and authentication.
 - **Documents**: Stored metadata, hashes, and full text extracts.
