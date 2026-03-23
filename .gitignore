@@ -32,5 +32,4 @@ backend/*.pdf
 backend/*.json
 backend/*.txt
 !backend/requirements.txt
-!backend/runtime.txt
 !README.md
