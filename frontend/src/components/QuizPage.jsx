@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FaClock, FaBrain, FaArrowLeft, FaCheck } from "react-icons/fa";
 import "./QuizPage.css";
+import { apiUrl } from "../apiConfig";
 
 function QuizPage() {
     const { topic } = useParams();
@@ -16,7 +17,7 @@ function QuizPage() {
         const fetchQuiz = async () => {
             try {
                 const token = sessionStorage.getItem('knowledgeAI_token');
-                const res = await fetch("http://127.0.0.1:8000/generate-quiz", {
+                const res = await fetch(apiUrl("/generate-quiz"), {
                     method: "POST",
                     headers: { 
                         "Content-Type": "application/json",

@@ -3,6 +3,7 @@ import { FaFileAlt, FaLightbulb, FaFileDownload, FaArrowLeft, FaClock, FaBrain, 
 import { useNavigate, useLocation } from "react-router-dom";
 import TopicChat from "./TopicChat";
 import "./TopicInsights.css";
+import { apiUrl } from '../apiConfig';
 
 function TopicInsights() {
     const [topics, setTopics] = useState([]);
@@ -24,7 +25,7 @@ function TopicInsights() {
                 const queryParam = document_id ? `?document_id=${document_id}` : "";
 
                 // 1. Get topics
-                const res = await fetch(`http://127.0.0.1:8000/get-stored-topics${queryParam}`, {
+                const res = await fetch(apiUrl(`/get-stored-topics${queryParam}`), {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("Failed to fetch topics");
@@ -39,7 +40,7 @@ function TopicInsights() {
                 }
 
                 // 2. Get the latest document to show subject
-                const docsRes = await fetch("http://127.0.0.1:8000/get-documents", {
+                const docsRes = await fetch(apiUrl("/get-documents"), {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 const docsData = await docsRes.json();
@@ -72,13 +73,13 @@ function TopicInsights() {
             const token = sessionStorage.getItem('knowledgeAI_token');
             const queryParam = document_id ? `?document_id=${document_id}` : "";
 
-            const res = await fetch(`http://127.0.0.1:8000/store-topics-with-content${queryParam}`, {
+            const res = await fetch(apiUrl(`/store-topics-with-content${queryParam}`), {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error("Analysis failed");
 
-            const refreshRes = await fetch(`http://127.0.0.1:8000/get-stored-topics${queryParam}`, {
+            const refreshRes = await fetch(apiUrl(`/get-stored-topics${queryParam}`), {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await refreshRes.json();
@@ -253,7 +254,7 @@ function TopicDetails({ topic }) {
                         const token = sessionStorage.getItem('knowledgeAI_token');
                         try {
                             const res = await fetch(
-                                `http://127.0.0.1:8000/download-topic-pdf/${encodeURIComponent(topic.topic)}`,
+                                apiUrl(`/download-topic-pdf/${encodeURIComponent(topic.topic)}`),
                                 { headers: { Authorization: `Bearer ${token}` } }
                             );
                             if (!res.ok) throw new Error('Failed to download PDF');

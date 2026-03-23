@@ -8,6 +8,7 @@ import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 import LoginPage from "./components/LoginPage";
 import Dashboard from "./components/Dashboard";
+import { apiUrl } from "./apiConfig";
 
 function App() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ function App() {
     try {
       // 1. Upload Document
       const token = sessionStorage.getItem('knowledgeAI_token');
-      const uploadResponse = await fetch("http://127.0.0.1:8000/upload-document", {
+      const uploadResponse = await fetch(apiUrl("/upload-document"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -103,7 +104,7 @@ function App() {
       // 2. Automatically Trigger Knowledge Analysis
       setMessage(`🧠 Analyzing document content for ${subject}...`);
 
-      const analysisResponse = await fetch("http://127.0.0.1:8000/store-topics-with-content", {
+      const analysisResponse = await fetch(apiUrl("/store-topics-with-content"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

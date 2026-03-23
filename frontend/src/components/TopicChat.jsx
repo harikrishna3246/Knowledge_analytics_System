@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "./TopicChat.css";
 import { FaRobot, FaUser, FaPaperPlane } from "react-icons/fa";
+import { apiUrl } from '../apiConfig';
 
 function TopicChat({ topic, documentContext }) {
     const [question, setQuestion] = useState("");
@@ -25,7 +26,7 @@ function TopicChat({ topic, documentContext }) {
 
         try {
             const token = sessionStorage.getItem('knowledgeAI_token');
-            const res = await fetch("http://127.0.0.1:8000/chat", {
+            const res = await fetch(apiUrl("/chat"), {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json",
