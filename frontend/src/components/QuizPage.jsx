@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaClock, FaBrain, FaArrowLeft, FaCheck } from "react-icons/fa";
+import { FaClock, FaArrowLeft, FaCheck } from "react-icons/fa";
 import "./QuizPage.css";
 import { apiUrl } from "../apiConfig";
 
@@ -44,6 +44,7 @@ function QuizPage() {
         }
         const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
         return () => clearInterval(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeLeft]);
 
     const handleOptionChange = (qIndex, optIndex) => {

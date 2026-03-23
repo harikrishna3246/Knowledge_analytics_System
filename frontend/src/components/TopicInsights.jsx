@@ -9,6 +9,7 @@ function TopicInsights() {
     const [topics, setTopics] = useState([]);
     const [subject, setSubject] = useState("");
     const [loading, setLoading] = useState(true);
+    // eslint-disable-next-line no-unused-vars
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("ALL");
@@ -64,7 +65,7 @@ function TopicInsights() {
         };
 
         fetchData();
-    }, []);
+    }, [document_id]);
 
     const triggerManualAnalysis = async () => {
         setLoading(true);
