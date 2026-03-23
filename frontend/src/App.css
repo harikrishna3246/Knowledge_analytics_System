@@ -65,7 +65,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 8%;
+  padding: 1rem 6%;
   position: fixed;
   top: 0;
   left: 0;
@@ -77,7 +77,7 @@ body {
 .navbar.scrolled {
   background: rgba(250, 247, 242, 0.85);
   backdrop-filter: blur(15px);
-  padding: 1rem 8%;
+  padding: 0.75rem 6%;
   border-bottom: 1px solid var(--glass-border);
   box-shadow: var(--shadow-soft);
 }
@@ -162,16 +162,16 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 8rem 8% 4rem;
-  gap: 4rem;
+  padding: 5rem 6% 3rem;
+  gap: 3rem;
 }
 
 .hero-title {
-  font-size: 5rem;
+  font-size: 4rem;
   line-height: 1.1;
   font-weight: 800;
   color: var(--accent);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   letter-spacing: -0.03em;
 }
 
@@ -183,9 +183,9 @@ body {
 }
 
 .hero-subtitle {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   color: var(--text-muted);
-  margin-bottom: 3.5rem;
+  margin-bottom: 2.5rem;
   max-width: 700px;
   margin-left: auto;
   margin-right: auto;
@@ -239,11 +239,11 @@ body {
 .visual-card {
   background: var(--bg-card);
   border-radius: var(--radius-xl);
-  padding: 3rem;
+  padding: 2.2rem;
   box-shadow: var(--shadow-premium);
   border: 1px solid var(--glass-border);
   animation: float 6s ease-in-out infinite;
-  width: 440px;
+  width: 380px;
   backdrop-filter: blur(10px);
 }
 
@@ -364,7 +364,7 @@ body {
 
 /* Upload Section */
 .upload-section {
-  padding: 8rem 8%;
+  padding: 5rem 6%;
   background: #fff;
   position: relative;
 }
@@ -384,26 +384,26 @@ body {
 }
 
 .section-title {
-  font-size: 3.5rem;
+  font-size: 2.8rem;
   font-weight: 800;
   text-align: center;
   color: var(--accent);
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
 }
 
 .section-subtitle {
   text-align: center;
   color: var(--text-muted);
-  font-size: 1.2rem;
-  margin-bottom: 4rem;
+  font-size: 1rem;
+  margin-bottom: 2.5rem;
 }
 
 .upload-card {
-  max-width: 700px;
+  max-width: 650px;
   margin: 0 auto;
   background: #fff !important;
   border: 1px solid var(--glass-border) !important;
-  padding: 3.5rem !important;
+  padding: 2.5rem !important;
   border-radius: 32px !important;
   box-shadow: 0 30px 60px rgba(62, 51, 46, 0.06) !important;
 }
@@ -446,7 +446,7 @@ body {
   border: 2px dashed var(--primary-glow);
   background: #faf7f2;
   border-radius: 24px;
-  padding: 5rem 2rem;
+  padding: 3.5rem 1.5rem;
   transition: all 0.3s;
   text-align: center;
 }
@@ -502,7 +502,7 @@ body {
 
 /* Features */
 .features-section {
-  padding: 8rem 8%;
+  padding: 5rem 6%;
 }
 
 .features-grid {
@@ -514,7 +514,7 @@ body {
 .feature-card {
   background: #fff;
   border: 1px solid var(--glass-border);
-  padding: 3.5rem 2.5rem;
+  padding: 2.5rem 2rem;
   border-radius: 32px;
   transition: all 0.4s;
   box-shadow: var(--shadow-soft);
