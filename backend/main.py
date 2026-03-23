@@ -35,7 +35,19 @@ import os
 
 import traceback
 
-app = FastAPI()
+tags_metadata = [
+    {"name": "Authentication", "description": "Operations for user registration, login, and dashboard user metadata."},
+    {"name": "Documents", "description": "Endpoints to upload, read, and manage PDF/DOCX documents."},
+    {"name": "Topics", "description": "AI-powered extraction, enhancement, and management of academic topics."},
+    {"name": "Chat & Assessment", "description": "AI chat interface handling and automated quiz generation operations."},
+]
+
+app = FastAPI(
+    title="Knowledge Analytics System API",
+    description="Interactive API documentation for the Knowledge Analytics System. Shows how the frontend and backend communicate for document analysis and AI functionalities.",
+    version="1.0.0",
+    openapi_tags=tags_metadata
+)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
@@ -122,7 +134,7 @@ class SignupRequest(BaseModel):
     name: str = ""
     picture: str = ""
 
-@app.post("/signup")
+@app.post("/signup", tags=["Authentication"], summary="Register a new user")
 def signup_user(data: SignupRequest):
     print("DEBUG: /signup called with", data)
     from datetime import datetime
@@ -148,7 +160,7 @@ def signup_user(data: SignupRequest):
         print("Signup error:", e)
         return {"error": f"Signup failed: {e}"}
 
-@app.post("/login")
+@app.post("/login", tags=["Authentication"], summary="Login a user and return JWT token")
 def login_user(data: LoginRequest):
     from datetime import datetime
     user = users_collection.find_one({"email": data.email})
@@ -187,7 +199,7 @@ def login_user(data: LoginRequest):
     token = create_access_token({"sub": data.email})
     return {"message": "Login successful", "email": data.email, "token": token}
 
-@app.post("/upload-document")
+@app.post("/upload-document", tags=["Documents"], summary="Upload and extract text from a document")
 async def upload_document(
     file: UploadFile = File(...),
     subject: str = Form(...),
@@ -267,7 +279,7 @@ async def upload_document(
 
 
 
-@app.get("/get-documents")
+@app.get("/get-documents", tags=["Documents"], summary="Get all uploaded documents for the user")
 def get_documents(current_user: dict = Depends(get_current_user)):
     """Get all uploaded documents for the current user"""
     try:
@@ -295,7 +307,7 @@ def get_documents(current_user: dict = Depends(get_current_user)):
         return {"error": f"Failed to fetch documents: {str(e)}"}
 
 
-@app.get("/read-document")
+@app.get("/read-document", tags=["Documents"], summary="Read content of the latest document")
 def read_uploaded_document(current_user: dict = Depends(get_current_user)):
     # Get the most recent document for this user
     document = documents_collection.find_one(
@@ -325,7 +337,7 @@ def read_uploaded_document(current_user: dict = Depends(get_current_user)):
 
 from bson import ObjectId
 
-@app.get("/get-stored-topics")
+@app.get("/get-stored-topics", tags=["Topics"], summary="Retrieve academic topics for a document")
 def get_stored_topics(document_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     """Retrieve topics for the optionally provided document_id, or the most recently uploaded document for this user"""
     try:
@@ -368,7 +380,7 @@ def get_stored_topics(document_id: Optional[str] = None, current_user: dict = De
     except Exception as e:
         return {"error": f"Failed to fetch topics: {str(e)}"}
 
-@app.get("/extract-topics")
+@app.get("/extract-topics", tags=["Topics"], summary="Extract topic names and priority only")
 def extract_document_topics():
     # Find the latest document by upload time
     document = documents_collection.find_one(sort=[("uploaded_at", -1)])
@@ -386,7 +398,7 @@ def extract_document_topics():
         "topics": topics
     }
 
-@app.post("/store-topics-with-content")
+@app.post("/store-topics-with-content", tags=["Topics"], summary="Analyze document & store augmented topics")
 def store_topics_with_content(document_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     from bson import ObjectId
     document = None
@@ -492,7 +504,7 @@ def store_topics_with_content(document_id: Optional[str] = None, current_user: d
         "topics": stored_topics
     }
 
-@app.get("/download-topic-pdf/{topic_name}")
+@app.get("/download-topic-pdf/{topic_name}", tags=["Topics"], summary="Download topic notes as PDF")
 def download_topic_pdf(topic_name: str, current_user: dict = Depends(get_current_user)):
     topic = topics_collection.find_one({"topic": topic_name, "user_email": current_user.get("email")})
     if not topic:
@@ -591,7 +603,7 @@ def download_topic_pdf(topic_name: str, current_user: dict = Depends(get_current
 
 # Keeping the old download-topic for backward compatibility if needed, 
 # but recommendation is to use PDF.
-@app.get("/download-topic/{topic_name}")
+@app.get("/download-topic/{topic_name}", tags=["Topics"], summary="Download topic notes as Text (Legacy)")
 def download_topic(topic_name: str, current_user: dict = Depends(get_current_user)):
     topic = topics_collection.find_one({"topic": topic_name, "user_email": current_user.get("email")})
     if not topic:
@@ -627,7 +639,7 @@ class ChatRequest(BaseModel):
     question: str
     document_context: str = ""
 
-@app.post("/chat")
+@app.post("/chat", tags=["Chat & Assessment"], summary="Ask AI a question about a specific topic")
 def chat_with_topic(data: ChatRequest, current_user: dict = Depends(get_current_user)):
     answer = topic_chat(
         topic=data.topic,
@@ -636,7 +648,7 @@ def chat_with_topic(data: ChatRequest, current_user: dict = Depends(get_current_
     )
     return {"answer": answer}
 
-@app.post("/generate-quiz")
+@app.post("/generate-quiz", tags=["Chat & Assessment"], summary="Generate a multi-choice quiz for a topic")
 def generate_quiz_endpoint(data: dict, current_user: dict = Depends(get_current_user)):
     topic = data.get("topic")
     if not topic:
@@ -649,7 +661,7 @@ class SaveAssessmentRequest(BaseModel):
     total: int
     percentage: int
 
-@app.post("/save-assessment")
+@app.post("/save-assessment", tags=["Chat & Assessment"], summary="Save quiz scoring results")
 def save_assessment(data: SaveAssessmentRequest, current_user: dict = Depends(get_current_user)):
     try:
         assessments_collection.insert_one({
@@ -664,7 +676,7 @@ def save_assessment(data: SaveAssessmentRequest, current_user: dict = Depends(ge
     except Exception as e:
         return {"error": f"Failed to save assessment: {str(e)}"}
 
-@app.get("/user-dashboard")
+@app.get("/user-dashboard", tags=["Authentication"], summary="Get aggregate stats for dashboard UI")
 def get_user_dashboard(current_user: dict = Depends(get_current_user)):
     try:
         user_info = {

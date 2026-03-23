@@ -16,17 +16,22 @@ function ResultPage() {
 
     let score = 0;
     let totalMCQ = 0;
+    let answeredMCQ = 0;
 
     questions.forEach((q, i) => {
         if (q.type === "mcq") {
             totalMCQ++;
-            if (answers[i] === q.correct_answer) {
-                score++;
+            if (answers[i] !== undefined && answers[i] !== null && answers[i] !== "") {
+                answeredMCQ++;
+                if (answers[i] === q.correct_answer) {
+                    score++;
+                }
             }
         }
     });
 
-    const percentage = totalMCQ > 0 ? Math.round((score / totalMCQ) * 100) : 0;
+    // Calculate percentage using only the number of questions answered
+    const percentage = answeredMCQ > 0 ? Math.round((score / answeredMCQ) * 100) : 0;
 
     useEffect(() => {
         const saveScore = async () => {
@@ -74,7 +79,7 @@ function ResultPage() {
                         <span className="label">Composite Score</span>
                     </div>
                     <div className="score-details">
-                        <p><strong>Correct MCQs:</strong> {score} / {totalMCQ}</p>
+                        <p><strong>Correct MCQs:</strong> {score} / {answeredMCQ} Answered <br/><span style={{fontSize: "0.85em", color: "gray"}}>(Out of {totalMCQ} Allotted)</span></p>
                         <p><strong>Problem Solutions:</strong> Submitted for Review</p>
                     </div>
                 </div>
