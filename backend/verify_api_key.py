@@ -23,7 +23,7 @@ try:
         print(f"- {m.id}")
 
     # Test with a known stable model if available, or just the first one
-    model_id = "llama3-8b-8192" # Default fallback
+    model_id = "llama-3.1-8b-instant" # Default fallback
     if models.data:
         model_id = models.data[0].id
     

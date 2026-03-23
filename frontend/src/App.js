@@ -90,7 +90,7 @@ function App() {
 
     try {
       // 1. Upload Document
-      const token = localStorage.getItem('knowledgeAI_token');
+      const token = sessionStorage.getItem('knowledgeAI_token');
       const uploadResponse = await fetch("http://127.0.0.1:8000/upload-document", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },

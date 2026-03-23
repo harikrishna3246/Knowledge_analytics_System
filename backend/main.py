@@ -1,9 +1,11 @@
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Load env before other imports
-load_dotenv(override=True)
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
 
 import jwt
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
